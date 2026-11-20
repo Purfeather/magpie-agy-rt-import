@@ -1,6 +1,6 @@
 {
   "name": "magpie-agy-rt-import",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A Magpie page that converts an Antigravity refresh token into AGY-CLI import JSON locally.",
   "license": "MIT",
   "repository": {

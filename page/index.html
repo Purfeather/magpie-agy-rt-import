@@ -15,13 +15,13 @@
         <p>把 Antigravity Refresh Token 转成 AGY-CLI 支持的账号导入 JSON。</p>
       </header>
 
-      <form id="convert" class="card" autocomplete="off" novalidate>
+      <div class="card">
         <label for="token">Antigravity Refresh Token</label>
         <input id="token" type="password" autocomplete="off" spellcheck="false"
           autocapitalize="none" aria-describedby="token-hint status" required>
         <p id="token-hint" class="hint">只需粘贴一个已获授权的 Refresh Token。转换在当前页面完成。</p>
         <div class="actions">
-          <button id="copy" class="primary" type="submit">复制导入 JSON</button>
+          <button id="copy" class="primary" type="button">复制导入 JSON</button>
           <button id="clear" type="button">清空</button>
         </div>
         <p id="status" class="status" role="status"></p>
@@ -29,7 +29,7 @@
           <label for="result">导入 JSON</label>
           <textarea id="result" rows="6" readonly spellcheck="false" aria-describedby="status"></textarea>
         </div>
-      </form>
+      </div>
 
       <section class="instructions" aria-labelledby="next">
         <h2 id="next">在 AGY-CLI 中导入</h2>

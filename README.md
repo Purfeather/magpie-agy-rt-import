@@ -4,13 +4,11 @@
 
 ## 安装
 
-用有仓库访问权限的 GitHub 账号克隆，再从仓库目录安装。
-
 ```sh
-gh repo clone Purfeather/magpie-agy-rt-import
-cd magpie-agy-rt-import
-magpie plugin add .
+magpie plugin add github:Purfeather/magpie-agy-rt-import
 ```
+
+也可以先克隆仓库，再从仓库目录运行 `magpie plugin add .`。
 
 ## 使用
 

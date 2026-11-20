@@ -1,6 +1,5 @@
 "use strict";
 
-const form = document.getElementById("convert");
 const token = document.getElementById("token");
 const copy = document.getElementById("copy");
 const clear = document.getElementById("clear");
@@ -34,8 +33,8 @@ function copied() {
   statusLine.textContent = "已复制 JSON，可在 AGY-CLI 的账号导入窗口粘贴。";
 }
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
+// Magpie's sandbox allows script events, but does not allow form submissions.
+copy.addEventListener("click", async () => {
   resetOutput();
   const input = token.value;
   const refresh = input.trim();
@@ -75,6 +74,9 @@ form.addEventListener("submit", async (event) => {
 });
 
 token.addEventListener("input", resetOutput);
+token.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !event.isComposing) copy.click();
+});
 token.addEventListener("paste", (event) => {
   const pasted = event.clipboardData?.getData("text") ?? "";
   // Password inputs silently remove line breaks before a submit handler sees them.
