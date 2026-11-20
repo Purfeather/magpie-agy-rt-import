@@ -10,7 +10,7 @@ body { margin: 0; }
 main { max-width: 46rem; margin: 0 auto; padding: clamp(1.25rem, 5vw, 3.5rem); }
 header { margin-block-end: 1.6rem; }
 h1 { margin: 0 0 0.45rem; font-size: clamp(1.65rem, 4vw, 2.25rem); }
-header p { margin: 0; }
+h2 { margin: 0 0 0.15rem; font-size: 1.1rem; }
 
 .card {
   display: grid;
@@ -20,15 +20,16 @@ header p { margin: 0; }
   border-radius: 1rem;
   background: var(--magpie-card, #fff);
 }
+.card + .card { margin-top: 1rem; }
 
 label { display: block; font-weight: 650; }
-input, textarea, button {
+input, select, textarea, button {
   color: inherit;
   font: inherit;
   border: 1px solid var(--magpie-line, #aebed0);
   border-radius: 0.55rem;
 }
-input, textarea {
+input, select, textarea {
   width: 100%;
   min-height: 2.75rem;
   padding: 0.55rem 0.75rem;
@@ -51,10 +52,10 @@ button:hover { background: var(--magpie-accent-soft, #e8eef9); }
 .primary:hover { background: var(--magpie-accent, #244aaf); filter: brightness(0.92); }
 button:disabled { cursor: default; opacity: 0.65; }
 .manual label { margin-bottom: 0.4rem; }
+.card [hidden] { display: none; }
+#profile-picker label { margin-bottom: 0.35rem; }
 .status { min-height: 1.5em; margin: 0; font-size: 0.9rem; }
 .status[data-error] { color: var(--magpie-red, #b42328); }
 .hint { margin: 0; color: var(--magpie-muted, #526074); font-size: 0.875rem; }
-.instructions { margin-top: 1.6rem; }
-.instructions h2 { margin: 0 0 0.5rem; font-size: 1.05rem; }
-.instructions ol { margin: 0 0 0.65rem; padding-inline-start: 1.4rem; }
-.instructions li + li { margin-top: 0.35rem; }
+.hint code { overflow-wrap: anywhere; }
+.privacy { margin-top: 1rem; }

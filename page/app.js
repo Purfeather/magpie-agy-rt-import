@@ -33,6 +33,29 @@ function copied() {
   statusLine.textContent = "已复制 JSON，可在 AGY-CLI 的账号导入窗口粘贴。";
 }
 
+// A sandbox may deny both clipboard APIs. Leave the selected text for Ctrl+C.
+async function copyOrSelect(text, panel, field, stillCurrent) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return stillCurrent() ? "copied" : "cancelled";
+    } catch {
+      // Continue with the selection-based fallback.
+    }
+  }
+  if (!stillCurrent()) return "cancelled";
+  panel.hidden = false;
+  field.value = text;
+  field.focus();
+  field.select();
+  try {
+    if (document.execCommand?.("copy")) return "copied";
+  } catch {
+    // Manual copying still works when both clipboard APIs are blocked.
+  }
+  return "manual";
+}
+
 // Magpie's sandbox allows script events, but does not allow form submissions.
 copy.addEventListener("click", async () => {
   resetOutput();
@@ -44,33 +67,16 @@ copy.addEventListener("click", async () => {
   }
   const json = JSON.stringify({ token: { refresh_token: refresh }, auth_method: "consumer" }, null, 2);
 
-  if (navigator.clipboard?.writeText) {
-    copy.disabled = true;
-    try {
-      await navigator.clipboard.writeText(json);
-      if (token.value === input) copied();
-      return;
-    } catch {
-      // Some Magpie windows restrict clipboard access in the page's iframe.
-    } finally {
-      copy.disabled = false;
-    }
-    if (token.value !== input) return;
-  }
-
-  manual.hidden = false;
-  result.value = json;
-  result.focus();
-  result.select();
+  copy.disabled = true;
   try {
-    if (document.execCommand?.("copy")) {
-      copied();
-      return;
+    const state = await copyOrSelect(json, manual, result, () => token.value === input);
+    if (state === "copied") copied();
+    if (state === "manual") {
+      statusLine.textContent = "JSON 已选中。请按 Ctrl+C（macOS 为 Command+C）复制。";
     }
-  } catch {
-    // Manual copying still works when both clipboard APIs are blocked.
+  } finally {
+    copy.disabled = false;
   }
-  statusLine.textContent = "JSON 已选中。请按 Ctrl+C（macOS 为 Command+C）复制。";
 });
 
 token.addEventListener("input", resetOutput);
@@ -91,3 +97,91 @@ clear.addEventListener("click", () => {
   token.focus();
 });
 window.addEventListener("pagehide", clearToken);
+
+const folder = document.getElementById("accounts-folder");
+const picker = document.getElementById("profile-picker");
+const profile = document.getElementById("profile");
+const exportCopy = document.getElementById("export-copy");
+const exportClear = document.getElementById("export-clear");
+const exportStatus = document.getElementById("export-status");
+const exportManual = document.getElementById("export-manual");
+const exportResult = document.getElementById("export-result");
+const profiles = new Map();
+const profilePath = /^(?:accounts\/)?([a-z0-9]{8,32})\/\.gemini\/antigravity-cli\/antigravity-oauth-token$/u;
+const maxCredentialBytes = 64 * 1024;
+let exportRevision = 0;
+
+function resetExport() {
+  exportRevision++;
+  exportResult.value = "";
+  exportManual.hidden = true;
+  exportStatus.removeAttribute("data-error");
+  exportStatus.textContent = "";
+  exportCopy.disabled = !profiles.has(profile.value);
+}
+
+function exportError(message) {
+  exportStatus.setAttribute("data-error", "");
+  exportStatus.textContent = message;
+}
+
+function clearFolder() {
+  folder.value = "";
+  profiles.clear();
+  profile.replaceChildren();
+  picker.hidden = true;
+  resetExport();
+}
+
+folder.addEventListener("change", () => {
+  profiles.clear();
+  for (const file of folder.files) {
+    const id = profilePath.exec(file.webkitRelativePath)?.[1];
+    if (id && file.size > 0 && file.size <= maxCredentialBytes) profiles.set(id, file);
+  }
+  profile.replaceChildren(...Array.from(profiles.keys()).sort().map((id) => new Option(id, id)));
+  picker.hidden = profiles.size === 0;
+  resetExport();
+  if (profiles.size === 0) {
+    exportError("这里没有找到 AGY 账号凭据。请选择 Magpie 的 accounts 目录或其中一个账号目录。");
+  }
+});
+
+profile.addEventListener("change", resetExport);
+exportCopy.addEventListener("click", async () => {
+  resetExport();
+  const file = profiles.get(profile.value);
+  if (!file) return;
+  const revision = exportRevision;
+  const stillCurrent = () => revision === exportRevision;
+  exportCopy.disabled = true;
+  try {
+    let refresh;
+    try {
+      const saved = JSON.parse(await file.text());
+      refresh = typeof saved?.token?.refresh_token === "string" ? saved.token.refresh_token.trim() : "";
+      if (!refresh || /[\s\u0000-\u001f\u007f]/u.test(refresh)) throw new Error();
+    } catch {
+      if (stillCurrent()) exportError("无法从该账号文件读取有效格式的 Refresh Token。");
+      return;
+    }
+    if (!stillCurrent()) return;
+    const state = await copyOrSelect(refresh, exportManual, exportResult, stillCurrent);
+    if (state === "copied") {
+      exportManual.hidden = true;
+      exportResult.value = "";
+      exportCopy.focus();
+      exportStatus.textContent = "已复制选中账号的 Refresh Token。";
+    }
+    if (state === "manual") {
+      exportStatus.textContent = "RT 已选中。请按 Ctrl+C（macOS 为 Command+C）复制。";
+    }
+  } finally {
+    if (stillCurrent()) exportCopy.disabled = false;
+  }
+});
+exportClear.addEventListener("click", () => {
+  clearFolder();
+  folder.focus();
+});
+window.addEventListener("pagehide", clearFolder);
