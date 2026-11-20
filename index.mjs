@@ -38,7 +38,7 @@ export default {
       "Cache-Control": "no-store",
       "Referrer-Policy": "no-referrer",
       "X-Content-Type-Options": "nosniff",
-      "Content-Security-Policy": `default-src 'none'; script-src 'self' ${origin}; style-src 'self' ${origin}; connect-src 'self' ${origin}; base-uri 'none'; form-action 'none'; frame-ancestors 'self' http://127.0.0.1:* http://localhost:* http://magpie.localhost:*`,
+      "Content-Security-Policy": `default-src 'none'; script-src 'self' ${origin}; style-src 'self' ${origin}; connect-src 'self' ${origin}; base-uri 'none'; form-action 'none'; frame-ancestors 'self' http://127.0.0.1:* http://localhost:* http://magpie.localhost:* http://wails.localhost`,
     };
     let opening = false;
     try {
