@@ -33,6 +33,10 @@
 
       <section class="card" aria-labelledby="export-title">
         <h2 id="export-title">导出 Refresh Token</h2>
+        <div class="actions" id="auto-locate" hidden>
+          <button id="locate" class="primary" type="button">自动定位 Magpie 账号</button>
+        </div>
+        <p id="locate-status" class="hint" role="status" hidden>打开本机窗口，按邮箱或 Profile 选中账号后复制。</p>
         <label for="accounts-folder">Magpie AGY 账号目录</label>
         <input type="file" id="accounts-folder" webkitdirectory aria-describedby="folder-hint export-status">
         <p id="folder-hint" class="hint">Windows 默认位置 <code>%USERPROFILE%\.local\state\magpie-agy-bridge\accounts</code>。可以选整个 <code>accounts</code> 目录，也可以直接选其中一个账号目录。</p>
@@ -50,7 +54,7 @@
           <textarea id="export-result" rows="2" readonly spellcheck="false" aria-describedby="export-status"></textarea>
         </div>
       </section>
-      <p class="hint privacy">令牌只在当前页面处理。复制内容含完整凭据，用完请清理剪贴板。</p>
+      <p class="hint privacy">令牌在本机处理。复制内容含完整凭据，用完请清理剪贴板。</p>
     </main>
   </body>
 </html>

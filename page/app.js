@@ -185,3 +185,24 @@ exportClear.addEventListener("click", () => {
   folder.focus();
 });
 window.addEventListener("pagehide", clearFolder);
+
+const locate = document.getElementById("locate");
+const locateStatus = document.getElementById("locate-status");
+if (/^win/i.test(navigator.userAgentData?.platform || navigator.platform)
+    && /^(127\.0\.0\.1|localhost|magpie\.localhost|\[::1\])$/u.test(location.hostname)) {
+  document.getElementById("auto-locate").hidden = false;
+  locateStatus.hidden = false;
+  locate.addEventListener("click", async () => {
+    locate.disabled = true;
+    try {
+      await window.magpie?.ready;
+      const options = await window.magpie?.options?.get?.();
+      const port = Number(options?.port) || 34973;
+      location.assign(window.magpie?.service || `http://127.0.0.1:${port}/`);
+    } catch {
+      locateStatus.textContent = "本机账号定位服务暂不可用，可以手动选择目录。";
+    } finally {
+      locate.disabled = false;
+    }
+  });
+}
