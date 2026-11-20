@@ -1,0 +1,60 @@
+:root {
+  font-family: var(--magpie-font, system-ui, sans-serif);
+  color: var(--magpie-fg, #162033);
+  background: var(--magpie-bg, #f5f7fa);
+  line-height: 1.55;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+main { max-width: 46rem; margin: 0 auto; padding: clamp(1.25rem, 5vw, 3.5rem); }
+header { margin-block-end: 1.6rem; }
+h1 { margin: 0 0 0.45rem; font-size: clamp(1.65rem, 4vw, 2.25rem); }
+header p { margin: 0; }
+
+.card {
+  display: grid;
+  gap: 0.65rem;
+  padding: clamp(1rem, 4vw, 1.75rem);
+  border: 1px solid var(--magpie-line, #cbd4e1);
+  border-radius: 1rem;
+  background: var(--magpie-card, #fff);
+}
+
+label { display: block; font-weight: 650; }
+input, textarea, button {
+  color: inherit;
+  font: inherit;
+  border: 1px solid var(--magpie-line, #aebed0);
+  border-radius: 0.55rem;
+}
+input, textarea {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.75rem;
+  background: var(--magpie-bg, #f5f7fa);
+  font-family: ui-monospace, Consolas, monospace;
+}
+textarea { resize: vertical; overflow-wrap: anywhere; }
+[aria-invalid="true"] { border-color: var(--magpie-red, #b42328); }
+:focus-visible { outline: 2px solid var(--magpie-accent, #244aaf); outline-offset: 3px; }
+
+.actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.35rem; }
+button { background: transparent; min-height: 2.75rem; padding: 0.5rem 0.9rem; cursor: pointer; }
+button:hover { background: var(--magpie-accent-soft, #e8eef9); }
+.primary {
+  border-color: transparent;
+  background: var(--magpie-accent, #244aaf);
+  color: var(--magpie-accent-fg, #fff);
+  font-weight: 650;
+}
+.primary:hover { background: var(--magpie-accent, #244aaf); filter: brightness(0.92); }
+button:disabled { cursor: default; opacity: 0.65; }
+.manual label { margin-bottom: 0.4rem; }
+.status { min-height: 1.5em; margin: 0; font-size: 0.9rem; }
+.status[data-error] { color: var(--magpie-red, #b42328); }
+.hint { margin: 0; color: var(--magpie-muted, #526074); font-size: 0.875rem; }
+.instructions { margin-top: 1.6rem; }
+.instructions h2 { margin: 0 0 0.5rem; font-size: 1.05rem; }
+.instructions ol { margin: 0 0 0.65rem; padding-inline-start: 1.4rem; }
+.instructions li + li { margin-top: 0.35rem; }

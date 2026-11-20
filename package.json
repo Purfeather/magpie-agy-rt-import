@@ -1,0 +1,25 @@
+{
+  "name": "magpie-agy-rt-import",
+  "version": "0.1.0",
+  "description": "A Magpie page that converts an Antigravity refresh token into AGY-CLI import JSON locally.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Purfeather/magpie-agy-rt-import.git"
+  },
+  "files": ["page", "README.md", "LICENSE"],
+  "keywords": ["magpie-plugin", "magpie-page", "antigravity", "agy-cli"],
+  "magpie": {
+    "name": "AGY Refresh Token Import",
+    "summary": {
+      "en": "Convert an Antigravity refresh token to AGY-CLI import JSON locally.",
+      "zh": "在本地把 Antigravity Refresh Token 转换成 AGY-CLI 导入 JSON。"
+    },
+    "page": {
+      "title": "AGY RT Import",
+      "titles": { "zh": "AGY 令牌导入", "zh-TW": "AGY 權杖匯入" },
+      "file": "page/index.html"
+    },
+    "permissions": []
+  }
+}

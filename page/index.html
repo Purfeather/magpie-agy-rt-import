@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AGY 令牌导入</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="_magpie/bridge.js"></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>AGY 令牌导入</h1>
+        <p>把 Antigravity Refresh Token 转成 AGY-CLI 支持的账号导入 JSON。</p>
+      </header>
+
+      <form id="convert" class="card" autocomplete="off" novalidate>
+        <label for="token">Antigravity Refresh Token</label>
+        <input id="token" type="password" autocomplete="off" spellcheck="false"
+          autocapitalize="none" aria-describedby="token-hint status" required>
+        <p id="token-hint" class="hint">只需粘贴一个已获授权的 Refresh Token。转换在当前页面完成。</p>
+        <div class="actions">
+          <button id="copy" class="primary" type="submit">复制导入 JSON</button>
+          <button id="clear" type="button">清空</button>
+        </div>
+        <p id="status" class="status" role="status"></p>
+        <div id="manual" class="manual" hidden>
+          <label for="result">导入 JSON</label>
+          <textarea id="result" rows="6" readonly spellcheck="false" aria-describedby="status"></textarea>
+        </div>
+      </form>
+
+      <section class="instructions" aria-labelledby="next">
+        <h2 id="next">在 AGY-CLI 中导入</h2>
+        <ol>
+          <li>打开 Magpie 的供应商页面，找到 <b>Antigravity（本地 agy CLI）</b>。</li>
+          <li>选择 <b>从文件导入账号</b>，粘贴 JSON 并确认。由本机 agy 验证账号。</li>
+        </ol>
+        <p class="hint">JSON 含有完整令牌。导入后请清理剪贴板。</p>
+      </section>
+    </main>
+  </body>
+</html>
