@@ -6,55 +6,150 @@
     <title>AGY 令牌管理</title>
     <link rel="stylesheet" href="style.css">
     <script src="_magpie/bridge.js"></script>
+    <script src="session.js" defer></script>
     <script src="app.js" defer></script>
   </head>
-  <body>
-    <main>
-      <header>
-        <h1>AGY 令牌管理</h1>
+  <body data-hosted="static">
+    <main class="workbench">
+      <header class="page-header">
+        <div class="header-copy">
+          <h1>AGY 令牌管理</h1>
+          <p class="subtitle">在本机转换 AGY-CLI 导入 JSON，并直接导出已保存 Magpie 账号的 Refresh Token。</p>
+        </div>
+        <div class="connection-pill" id="connection-badge" data-state="offline" role="status" aria-live="polite">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span id="connection-text">离线手动模式</span>
+        </div>
       </header>
 
-      <section class="card" aria-labelledby="import-title">
-        <h2 id="import-title">导入 Refresh Token</h2>
-        <label for="token">Antigravity Refresh Token</label>
-        <input id="token" type="password" autocomplete="off" spellcheck="false"
-          autocapitalize="none" aria-describedby="token-hint status" required>
-        <p id="token-hint" class="hint">复制 JSON 后，在 <b>供应商 → Antigravity（本地 agy CLI）→ 从文件导入账号</b> 粘贴并确认。</p>
-        <div class="actions">
-          <button id="copy" class="primary" type="button">复制导入 JSON</button>
-          <button id="clear" type="button">清空</button>
-        </div>
-        <p id="status" class="status" role="status"></p>
-        <div id="manual" class="manual" hidden>
-          <label for="result">导入 JSON</label>
-          <textarea id="result" rows="6" readonly spellcheck="false" aria-describedby="status"></textarea>
-        </div>
-      </section>
+      <div class="workspace-grid">
+        <section class="card card-import" aria-labelledby="import-title">
+          <div class="card-head">
+            <div class="card-head-title">
+              <h2 id="import-title">导入 Refresh Token</h2>
+              <span class="chip">RT → JSON</span>
+            </div>
+          </div>
 
-      <section class="card" aria-labelledby="export-title">
-        <h2 id="export-title">导出 Refresh Token</h2>
-        <div class="actions" id="auto-locate" hidden>
-          <button id="locate" class="primary" type="button">自动定位 Magpie 账号</button>
-        </div>
-        <p id="locate-status" class="hint" role="status" hidden>打开本机窗口，按邮箱或 Profile 选中账号后复制。</p>
-        <label for="accounts-folder">Magpie AGY 账号目录</label>
-        <input type="file" id="accounts-folder" webkitdirectory aria-describedby="folder-hint export-status">
-        <p id="folder-hint" class="hint">Windows 默认位置 <code>%USERPROFILE%\.local\state\magpie-agy-bridge\accounts</code>。可以选整个 <code>accounts</code> 目录，也可以直接选其中一个账号目录。</p>
-        <div id="profile-picker" hidden>
-          <label for="profile">账号目录 ID（Profile）</label>
-          <select id="profile"></select>
-        </div>
-        <div class="actions">
-          <button id="export-copy" class="primary" type="button" disabled>复制 RT</button>
-          <button id="export-clear" type="button">清空</button>
-        </div>
-        <p id="export-status" class="status" role="status"></p>
-        <div id="export-manual" class="manual" hidden>
-          <label for="export-result">Refresh Token</label>
-          <textarea id="export-result" rows="2" readonly spellcheck="false" aria-describedby="export-status"></textarea>
-        </div>
-      </section>
-      <p class="hint privacy">令牌在本机处理。复制内容含完整凭据，用完请清理剪贴板。</p>
+          <div class="field-group">
+            <label for="token">Refresh Token 或含 RT 的 JSON</label>
+            <div class="input-with-toggle">
+              <input
+                id="token"
+                type="password"
+                autocomplete="off"
+                spellcheck="false"
+                autocapitalize="none"
+                placeholder="粘贴 Refresh Token，或直接粘贴导入 JSON"
+                aria-describedby="token-feedback import-status"
+                required
+              >
+              <button
+                id="toggle-visibility"
+                class="btn-toggle"
+                type="button"
+                aria-pressed="false"
+                aria-label="显示或隐藏输入的 Refresh Token"
+              >显示</button>
+            </div>
+            <p id="token-feedback" class="feedback hint" role="status">支持直接粘贴裸 RT，或粘贴含 <code>refresh_token</code> 的 JSON 自动提取。</p>
+          </div>
+
+          <div id="import-preview" class="preview-box" hidden>
+            <div class="preview-head">
+              <span>脱敏 JSON 预览</span>
+              <span class="badge badge-ok">格式有效</span>
+            </div>
+            <pre class="code-preview"><code>{
+  "token": {
+    "refresh_token": "••••"
+  },
+  "auth_method": "consumer"
+}</code></pre>
+          </div>
+
+          <div class="actions">
+            <button id="copy-json" class="primary" type="button" disabled>复制导入 JSON</button>
+            <button id="download-json" type="button" disabled>下载 JSON</button>
+            <button id="clear-import" type="button">清空</button>
+          </div>
+
+          <p id="import-status" class="status" role="status"></p>
+
+          <div id="import-manual" class="manual" hidden>
+            <label for="import-result">导入 JSON（按 Ctrl+C / Command+C 复制）</label>
+            <textarea id="import-result" rows="6" readonly spellcheck="false" aria-describedby="import-status"></textarea>
+          </div>
+
+          <ol class="steps-guide">
+            <li>点击 <strong>复制导入 JSON</strong>（或下载 <code>agy-account.json</code>）。</li>
+            <li>在 Magpie 进入 <strong>供应商 → Antigravity（本地 agy CLI）→ 从文件导入账号</strong>，粘贴或选择文件确认。</li>
+          </ol>
+        </section>
+
+        <section class="card card-export" aria-labelledby="export-title">
+          <div class="card-head">
+            <div class="card-head-title">
+              <h2 id="export-title">导出 Refresh Token</h2>
+              <span class="chip">本机账号</span>
+            </div>
+            <button id="refresh-accounts" class="btn-sm" type="button" hidden>刷新列表</button>
+          </div>
+
+          <details id="local-session" hidden>
+            <summary>连接终端启动的本机扫描会话</summary>
+            <label for="session-code">本机会话码</label>
+            <input id="session-code" type="password" autocomplete="off" spellcheck="false">
+            <button id="connect-session" type="button">连接</button>
+            <p class="hint">在插件目录运行 <code>node index.mjs --workbench</code> 获取会话码。停止命令即可结束会话。</p>
+          </details>
+
+          <div id="service-accounts-section" class="service-section" hidden>
+            <div class="toolbar">
+              <label class="sr-only" for="account-search">按邮箱或 Profile ID 搜索账号</label>
+              <input
+                id="account-search"
+                type="search"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="按邮箱或 Profile ID 搜索…"
+              >
+              <span id="account-count" class="count-pill"></span>
+            </div>
+
+            <div id="service-state" class="state-box" hidden></div>
+            <ul id="service-accounts-list" class="account-list" aria-label="本机 Magpie AGY 账号列表"></ul>
+          </div>
+
+          <details id="manual-export" class="manual-drawer" open>
+            <summary>手动选择账号目录</summary>
+            <div class="folder-fields">
+              <div class="folder-row">
+                <label class="sr-only" for="accounts-folder">选择 Magpie AGY 账号目录</label>
+                <input type="file" id="accounts-folder" webkitdirectory aria-describedby="folder-hint export-status">
+                <button id="clear-folder" class="btn-sm" type="button">清空目录</button>
+              </div>
+              <p id="folder-hint" class="hint">
+                默认目录：Windows <code>%USERPROFILE%\.local\state\magpie-agy-bridge\accounts</code>，macOS / Linux <code>~/.local/state/magpie-agy-bridge/accounts</code>。可选择整个 <code>accounts</code> 目录或单个账号目录。
+              </p>
+              <ul id="manual-accounts-list" class="account-list" aria-label="手动选择的账号列表" hidden></ul>
+            </div>
+          </details>
+
+          <p id="export-status" class="status" role="status"></p>
+
+          <div id="export-manual" class="manual" hidden>
+            <label id="export-manual-label" for="export-result">Refresh Token（按 Ctrl+C / Command+C 复制）</label>
+            <textarea id="export-result" rows="3" readonly spellcheck="false" aria-describedby="export-status"></textarea>
+          </div>
+        </section>
+      </div>
+
+      <footer class="page-footer">
+        <p class="hint privacy">所有令牌仅在本机处理，不会离开当前设备。复制内容含完整凭据，用完请及时清理剪贴板。</p>
+      </footer>
     </main>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
   </body>
 </html>
