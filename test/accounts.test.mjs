@@ -40,6 +40,17 @@ afterEach(async () => {
 });
 
 describe("lib/accounts.mjs", () => {
+  it("distinguishes an absent account store from an unreadable store", async () => {
+    const { root, accountsDir } = await createFixture();
+    assert.deepEqual((await listAccounts({ accountsDir: path.join(root, "missing") })).accounts, []);
+    const original = fsPromises.readdir;
+    fsPromises.readdir = async () => { throw Object.assign(new Error("denied"), { code: "EACCES" }); };
+    try {
+      await assert.rejects(listAccounts({ accountsDir }), { code: "EACCES" });
+    } finally {
+      fsPromises.readdir = original;
+    }
+  });
   it("resolves default accountsDir from XDG_STATE_HOME or homedir", () => {
     const withXdg = getDefaultAccountsDir({ XDG_STATE_HOME: "/custom/state" }, "/home/tester");
     assert.equal(withXdg, path.join("/custom/state", "magpie-agy-bridge", "accounts"));

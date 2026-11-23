@@ -5,7 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, it } from "node:test";
 import sessionCodec from "../page/session.js";
-import plugin, { startService } from "../index.mjs";
+import { _internal } from "../index.mjs";
+const { startService } = _internal;
 
 const cleanups = [];
 
@@ -37,7 +38,7 @@ function rawHttpRequest({ port, method = "GET", path: reqPath = "/", headers = {
   });
 }
 
-async function setupTestServer() {
+async function setupTestServer(options = {}) {
   const root = await mkdtemp(path.join(tmpdir(), "magpie-agy-srv-"));
   const configDir = path.join(root, "config");
   const accountsDir = path.join(root, "accounts");
@@ -65,7 +66,7 @@ async function setupTestServer() {
     "utf8"
   );
 
-  const server = await startService({ port: 0, configDir, accountsDir });
+  const server = await startService({ port: 0, configDir, accountsDir, ...options });
   cleanups.push(async () => {
     await server.stop();
     await rm(root, { recursive: true, force: true });
@@ -124,16 +125,27 @@ describe("index.mjs local plugin service", () => {
     assert.match(cssRes.headers.get("content-type") || "", /text\/css/);
   });
 
-  it("keeps the Magpie host static and leaves its configured port available", async () => {
-    const probe = http.createServer();
-    await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
-    const { port } = probe.address();
-    await new Promise((resolve) => probe.close(resolve));
-    assert.deepEqual(await plugin.server({}, { port }), {});
-    await new Promise((resolve, reject) => probe.once("error", reject).listen(port, "127.0.0.1", resolve));
-    await new Promise((resolve) => probe.close(resolve));
+  it("serves a session to its own hosted document without permitting cross-site reads", async () => {
+    const { server } = await setupTestServer({ hostedSession: true });
+    const response = await fetch(server.origin);
+    const html = await response.text();
+    assert.match(html, new RegExp(`name="agy-session" content="${server.nonce}"`));
+    assert.equal(response.headers.get("access-control-allow-origin"), null);
+    const listed = await fetch(server.origin + "/api/accounts", {
+      method: "POST", headers: { Origin: "null" }, body: JSON.stringify({ nonce: server.nonce }),
+    });
+    assert.equal(listed.status, 200);
+    const metadata = await listed.json();
+    assert.equal(metadata.accounts.length, 2);
+    assert.equal(JSON.stringify(metadata).includes("refresh_token"), false);
+    const forbidden = await fetch(server.origin + "/api/accounts", {
+      method: "POST", headers: { Origin: "https://example.com" },
+      body: JSON.stringify({ nonce: server.nonce }),
+    });
+    assert.equal(forbidden.status, 403);
+    assert.equal(forbidden.headers.get("access-control-allow-origin"), null);
     const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
-    assert.equal(manifest.magpie.page.service, undefined);
+    assert.equal(manifest.magpie.page.service.port, 34973);
   });
 
   it("authenticates the standalone request and binds its encrypted response to the route and request", async () => {

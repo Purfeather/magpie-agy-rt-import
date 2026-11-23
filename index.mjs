@@ -50,8 +50,9 @@ function buildSecurityHeaders(origin) {
   };
 }
 
-function hostedDocument(html) {
+function hostedDocument(html, nonce) {
   return html.replace(/\s*<script\s+src="_magpie\/bridge\.js"><\/script>/u, "")
+    .replace("<head>", nonce ? `<head>\n<meta name="agy-session" content="${nonce}">` : "<head>")
     .replace('<body data-hosted="static">', '<body data-hosted="service">');
 }
 
@@ -92,11 +93,12 @@ async function readBoundedText(request, maxBytes) {
   return { ok: true, text: Buffer.concat(chunks, total).toString("utf8") };
 }
 
-export function createServiceHandler({
+function createServiceHandler({
   port,
   nonce = randomBytes(32).toString("hex"),
   configDir = "",
   accountsDir = getDefaultAccountsDir(),
+  hostedSession = false,
 }) {
   const expectedHost = `127.0.0.1:${port}`;
   const origin = `http://${expectedHost}`;
@@ -124,7 +126,7 @@ export function createServiceHandler({
     if (request.method === "GET") {
       if (pathname === "/" || pathname === "/index.html") {
         const html = await readFile(resolveAssetPath("./page/index.html"), "utf8");
-        return new Response(hostedDocument(html), {
+        return new Response(hostedDocument(html, hostedSession ? nonce : ""), {
           status: 200,
           headers: { ...securityHeaders, "Content-Type": "text/html; charset=utf-8" },
         });
@@ -193,8 +195,12 @@ export function createServiceHandler({
       }
 
       if (pathname === "/api/accounts") {
-        const result = await listAccounts({ configDir, accountsDir });
-        return reply(result, 200);
+        try {
+          const result = await listAccounts({ configDir, accountsDir });
+          return reply(result, 200);
+        } catch {
+          return reply({ error: "read_failed" }, 500);
+        }
       }
 
       const exported = await readAccountRefreshToken(accountsDir, payload.profile);
@@ -243,11 +249,12 @@ function readNodeBody(req, maxBytes) {
   });
 }
 
-export async function startService({
+async function startService({
   port = DEFAULT_PORT,
   configDir = "",
   accountsDir = getDefaultAccountsDir(),
   nonce = randomBytes(32).toString("hex"),
+  hostedSession = false,
 } = {}) {
   if (typeof globalThis.Bun?.serve === "function") {
     let handler = null;
@@ -264,6 +271,7 @@ export async function startService({
       nonce,
       configDir,
       accountsDir,
+      hostedSession,
     });
     return {
       port: bunServer.port,
@@ -328,6 +336,7 @@ export async function startService({
         nonce,
         configDir,
         accountsDir,
+        hostedSession,
       });
       resolve();
     });
@@ -344,11 +353,26 @@ export async function startService({
   };
 }
 
-// Magpie supplies a static sandbox with no authenticated plugin RPC.
+let service;
 export default {
   id: "magpie-agy-rt-import",
-  async server() { return {}; },
+  async server(input, options) {
+    if (!service) {
+      service = startService({
+        port: Number(options?.port) || DEFAULT_PORT,
+        configDir: input.directory,
+        hostedSession: true,
+      }).catch((error) => {
+        service = null;
+        throw error;
+      });
+    }
+    await service;
+    return {};
+  },
 };
+
+export const _internal = { startService, createServiceHandler };
 
 // A standalone session is started explicitly by its owner, outside Magpie.
 // Its key is shown only on an interactive terminal and expires with the process.

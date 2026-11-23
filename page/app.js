@@ -15,6 +15,14 @@
   let localSession = null;
 
   async function sessionRequest(route, fields = {}) {
+    if (localSession.nonce) {
+      return fetch(new URL(route.slice(1), location.href), {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=UTF-8" },
+        body: JSON.stringify({ ...fields, nonce: localSession.nonce }),
+        credentials: "omit", redirect: "error", signal: AbortSignal.timeout(8000),
+      });
+    }
     const { key, origin } = localSession;
     const packet = await localSessionCodec.seal(key, "request:" + route, fields);
     const response = await fetch(origin + route, {
@@ -42,7 +50,7 @@
   const importManual = document.getElementById("import-manual");
   const importResult = document.getElementById("import-result");
 
-  const refreshAccountsBtn = document.getElementById("refresh-accounts");
+  const refreshPageBtn = document.getElementById("refresh-page");
   const serviceSection = document.getElementById("service-accounts-section");
   const accountSearch = document.getElementById("account-search");
   const accountCount = document.getElementById("account-count");
@@ -590,7 +598,7 @@
     if (serviceAccounts.length === 0) {
       accountCount.textContent = "0 个账号";
       serviceAccountsList.replaceChildren();
-      showServiceState("未发现已保存的 Magpie AGY 账号。你可以登录账号后刷新，或在下方手动选择目录。");
+      showServiceState("未发现已保存的 Magpie AGY 账号。登录账号后可点击页面右上角刷新。");
       return;
     }
 
@@ -644,7 +652,6 @@
     const revision = ++serviceListRevision;
     const stillCurrent = () => revision === serviceListRevision;
 
-    refreshAccountsBtn.disabled = true;
     if (serviceAccounts.length === 0) {
       showServiceState("正在扫描本机 Magpie AGY 账号…");
     }
@@ -660,43 +667,37 @@
         accountCount.textContent = "";
         showServiceState("本机服务会话已失效（可能已重启），请重新加载页面。", {
           isError: true,
-          actionLabel: "重新加载",
-          onAction: () => location.reload(),
         });
         manualDrawer.open = true;
         return;
       }
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+        const problem = await response.json().catch(() => ({}));
+        throw new Error(problem.error === "read_failed" ? "账号目录读取失败，请检查目录权限。" : "本机服务返回异常，请点击右上角刷新重试。");
       }
 
       const data = await response.json();
       if (!stillCurrent()) return;
 
       listReady = true;
+      manualDrawer.open = false;
       serviceAccounts = Array.isArray(data?.accounts) ? data.accounts : [];
       setConnectionState("connected", "本机服务已连接");
       renderServiceAccounts();
       if (notify) {
         showToast(`已刷新，共 ${serviceAccounts.length} 个账号`);
       }
-    } catch {
+    } catch (error) {
       if (!stillCurrent()) return;
       setConnectionState("error", "服务连接异常");
       serviceAccounts = [];
       serviceAccountsList.replaceChildren();
       accountCount.textContent = "";
-      showServiceState("无法读取本机账号列表，请重试或在下方手动选择目录。", {
+      showServiceState((error.message.includes("目录权限") ? error.message : "无法连接本机服务，请点击右上角刷新重试，或手动选择目录。"), {
         isError: true,
-        actionLabel: "重试",
-        onAction: () => loadServiceAccounts({ notify: true }),
       });
       manualDrawer.open = true;
-    } finally {
-      if (stillCurrent()) {
-        refreshAccountsBtn.disabled = false;
-      }
     }
   }
 
@@ -704,8 +705,14 @@
     if (listReady) renderServiceAccounts();
   });
 
-  refreshAccountsBtn.addEventListener("click", () => {
-    loadServiceAccounts({ notify: true });
+  refreshPageBtn.addEventListener("click", () => {
+    localSession = null;
+    serviceListRevision++;
+    clearImportAll();
+    clearManualFolder();
+    accountSearch.value = "";
+    document.getElementById("session-code").value = "";
+    location.reload();
   });
 
   // Manual folder chooser fallback
@@ -798,7 +805,46 @@
   async function init() {
     updateImportValidation();
 
+    if (location.hash.startsWith("#theme=")) {
+      try {
+        const theme = JSON.parse(decodeURIComponent(location.hash.slice(7)));
+        document.documentElement.dataset.theme = theme.dark ? "dark" : "light";
+        document.documentElement.style.colorScheme = theme.dark ? "dark" : "light";
+        if (typeof theme.lang === "string") document.documentElement.lang = theme.lang;
+        for (const [name, value] of Object.entries(theme.tokens || {})) {
+          if (name.startsWith("--magpie-") && typeof value === "string") {
+            document.documentElement.style.setProperty(name, value);
+          }
+        }
+      } catch {}
+    }
+
     const setup = document.getElementById("local-session");
+    const hostedNonce = document.querySelector('meta[name="agy-session"]')?.content;
+    if (hostedNonce) {
+      localSession = { nonce: hostedNonce };
+      serviceSection.hidden = false;
+      await loadServiceAccounts();
+      return;
+    }
+    if (window.magpie) {
+      try {
+        const theme = await window.magpie.ready;
+        const options = await window.magpie.options.get();
+        const port = Number(options?.port) || 34973;
+        const target = window.magpie.service || `http://127.0.0.1:${port}/`;
+        window.setTimeout(() => {
+          setConnectionState("error", "服务连接失败");
+          setExportStatus("无法连接本机服务，可点击右上角刷新重试，或手动选择目录。", true);
+          manualDrawer.open = true;
+        }, 8000);
+        location.replace(target + "#theme=" + encodeURIComponent(JSON.stringify(theme)));
+      } catch {
+        setConnectionState("error", "服务连接失败");
+        manualDrawer.open = true;
+      }
+      return;
+    }
     if (location.protocol === "file:" && !window.magpie && globalThis.crypto?.subtle) {
       setup.hidden = false;
       const code = document.getElementById("session-code");
@@ -818,7 +864,6 @@
           localSession = { key: await localSessionCodec.importKey(match[2]),
             origin: "http://127.0.0.1:" + match[1] };
           serviceSection.hidden = false;
-          refreshAccountsBtn.hidden = false;
           setConnectionState("connecting", "正在验证本机会话…");
           await loadServiceAccounts();
           if (listReady) { setup.open = false; manualDrawer.open = false; }
@@ -827,11 +872,8 @@
         }
       });
     }
-    // The Magpie frame cannot authenticate a listener at the configured port.
-    // Keep this trusted document, its host theme, and the directory chooser.
     setConnectionState("offline", "离线手动模式");
     serviceSection.hidden = true;
-    refreshAccountsBtn.hidden = true;
     manualDrawer.open = true;
   }
 

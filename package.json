@@ -1,6 +1,6 @@
 {
   "name": "magpie-agy-rt-import",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "A Magpie page to import and export Antigravity refresh tokens using AGY-CLI files.",
   "license": "MIT",
   "repository": {
@@ -22,7 +22,8 @@
     "page": {
       "title": "AGY Refresh Tokens",
       "titles": { "zh": "AGY 令牌管理", "zh-TW": "AGY 權杖管理" },
-      "file": "page/index.html"
+      "file": "page/index.html",
+      "service": { "port": 34973, "option": "port" }
     },
     "permissions": []
   }

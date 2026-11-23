@@ -16,9 +16,12 @@
           <h1>AGY 令牌管理</h1>
           <p class="subtitle">在本机转换 AGY-CLI 导入 JSON，并直接导出已保存 Magpie 账号的 Refresh Token。</p>
         </div>
-        <div class="connection-pill" id="connection-badge" data-state="offline" role="status" aria-live="polite">
+        <div class="header-actions">
+        <div class="connection-pill" id="connection-badge" data-state="connecting" role="status" aria-live="polite">
           <span class="status-dot" aria-hidden="true"></span>
-          <span id="connection-text">离线手动模式</span>
+          <span id="connection-text">正在识别本机账号…</span>
+        </div>
+        <button id="refresh-page" type="button">刷新</button>
         </div>
       </header>
 
@@ -93,7 +96,6 @@
               <h2 id="export-title">导出 Refresh Token</h2>
               <span class="chip">本机账号</span>
             </div>
-            <button id="refresh-accounts" class="btn-sm" type="button" hidden>刷新列表</button>
           </div>
 
           <details id="local-session" hidden>
@@ -121,7 +123,7 @@
             <ul id="service-accounts-list" class="account-list" aria-label="本机 Magpie AGY 账号列表"></ul>
           </div>
 
-          <details id="manual-export" class="manual-drawer" open>
+          <details id="manual-export" class="manual-drawer">
             <summary>手动选择账号目录</summary>
             <div class="folder-fields">
               <div class="folder-row">
