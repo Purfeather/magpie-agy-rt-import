@@ -1,7 +1,7 @@
 {
   "name": "magpie-agy-rt-import",
-  "version": "0.5.1",
-  "description": "A Magpie page to import and export Antigravity refresh tokens using AGY-CLI files.",
+  "version": "0.5.2",
+  "description": "AGY 令牌管理：导入 Refresh Token，按邮箱识别 Magpie 已登录账号并导出 RT。",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -14,15 +14,18 @@
   },
   "keywords": ["magpie-plugin", "magpie-page", "antigravity", "agy-cli"],
   "magpie": {
-    "name": "AGY Refresh Tokens",
+    "name": "AGY 令牌管理",
+    "icon": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgdmlld0JveD0iMCAwIDY0IDY0Ij4KICA8cmVjdCB3aWR0aD0iNjQiIGhlaWdodD0iNjQiIHJ4PSIxNiIgZmlsbD0iIzUxNDZlNSIvPgogIDxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzlkZThkNyIgc3Ryb2tlLXdpZHRoPSIzLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICA8cGF0aCBkPSJNMTYgMThhMjMgMjMgMCAwIDEgMzMgMm0tMS04IDEgOC04LTEiLz4KICAgIDxwYXRoIGQ9Ik00OCA0NmEyMyAyMyAwIDAgMS0zMy0ybTEgOC0xLTggOCAxIi8+CiAgPC9nPgogIDxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSI0LjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICA8Y2lyY2xlIGN4PSIyNCIgY3k9IjMyIiByPSI3Ii8+CiAgICA8cGF0aCBkPSJNMzEgMzJoMTdtLTcgMHY3bTctN3Y1Ii8+CiAgPC9nPgo8L3N2Zz4K",
     "summary": {
-      "en": "Single-page workbench to convert AGY-CLI import JSON and export refresh tokens from local Magpie accounts.",
-      "zh": "单页工作台：转换 AGY-CLI 导入 JSON，并直接浏览和导出本机 Magpie 账号的 RT。"
+      "en": "Import Antigravity refresh tokens, identify signed-in Magpie accounts by email, and export RT or AGY-CLI JSON.",
+      "zh": "导入 Antigravity Refresh Token，按邮箱识别 Magpie 已登录账号，一键导出 RT 或 AGY-CLI JSON。",
+      "zh-TW": "匯入 Antigravity Refresh Token，依信箱辨識 Magpie 已登入帳號，一鍵匯出 RT 或 AGY-CLI JSON。"
     },
     "page": {
       "title": "AGY Refresh Tokens",
       "titles": { "zh": "AGY 令牌管理", "zh-TW": "AGY 權杖管理" },
       "file": "page/index.html",
+      "icon": "page/icon.svg",
       "service": { "port": 34973, "option": "port" }
     },
     "permissions": []
