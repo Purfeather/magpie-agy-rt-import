@@ -12,6 +12,7 @@ import {
 const DEFAULT_PORT = 34973;
 const MAX_API_BODY_BYTES = 4096;
 const STATIC_ASSETS = new Map([
+  ["/theme.js", { path: "./page/theme.js", contentType: "text/javascript; charset=utf-8" }],
   ["/session.js", { path: "./page/session.js", contentType: "text/javascript; charset=utf-8" }],
   ["/app.js", { path: "./page/app.js", contentType: "text/javascript; charset=utf-8" }],
   ["/style.css", { path: "./page/style.css", contentType: "text/css; charset=utf-8" }],

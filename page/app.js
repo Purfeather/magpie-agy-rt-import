@@ -807,21 +807,20 @@
 
     if (location.hash.startsWith("#theme=")) {
       try {
-        const theme = JSON.parse(decodeURIComponent(location.hash.slice(7)));
-        document.documentElement.dataset.theme = theme.dark ? "dark" : "light";
-        document.documentElement.style.colorScheme = theme.dark ? "dark" : "light";
-        if (typeof theme.lang === "string") document.documentElement.lang = theme.lang;
-        for (const [name, value] of Object.entries(theme.tokens || {})) {
-          if (name.startsWith("--magpie-") && typeof value === "string") {
-            document.documentElement.style.setProperty(name, value);
-          }
-        }
+        applyMagpieTheme(JSON.parse(decodeURIComponent(location.hash.slice(7))));
       } catch {}
     }
 
     const setup = document.getElementById("local-session");
     const hostedNonce = document.querySelector('meta[name="agy-session"]')?.content;
     if (hostedNonce) {
+      window.addEventListener("message", (event) => {
+        if (event.source !== parent || !event.data || event.data.magpie !== 1) return;
+        const message = event.data;
+        if (message.event === "theme") applyMagpieTheme(message.data);
+        if (message.id === "agy-theme") applyMagpieTheme(message.result);
+      });
+      if (parent !== window) parent.postMessage({ magpie: 1, id: "agy-theme", method: "theme" }, "*");
       localSession = { nonce: hostedNonce };
       serviceSection.hidden = false;
       await loadServiceAccounts();

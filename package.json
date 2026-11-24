@@ -1,6 +1,6 @@
 {
   "name": "magpie-agy-rt-import",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "A Magpie page to import and export Antigravity refresh tokens using AGY-CLI files.",
   "license": "MIT",
   "repository": {

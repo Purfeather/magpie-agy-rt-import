@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -6,6 +7,7 @@ import fsPromises from "node:fs/promises";
 import { afterEach, describe, it } from "node:test";
 import {
   getDefaultAccountsDir,
+  getDefaultConfigDir,
   listAccounts,
   readAccountRefreshToken,
   validateRefreshToken,
@@ -40,18 +42,21 @@ afterEach(async () => {
 });
 
 describe("lib/accounts.mjs", () => {
-  it("distinguishes an absent account store from an unreadable store", async () => {
-    const { root, accountsDir } = await createFixture();
-    assert.deepEqual((await listAccounts({ accountsDir: path.join(root, "missing") })).accounts, []);
-    const original = fsPromises.readdir;
-    fsPromises.readdir = async () => { throw Object.assign(new Error("denied"), { code: "EACCES" }); };
+  it("distinguishes an absent registry from an unreadable registry", async () => {
+    const { configDir, accountsDir } = await createFixture();
+    assert.deepEqual((await listAccounts({ configDir, accountsDir })).accounts, []);
+    await writeFile(path.join(configDir, "plugin-auth.json"), '{}');
+    const original = fsPromises.open;
+    fsPromises.open = async () => { throw Object.assign(new Error("denied"), { code: "EACCES" }); };
     try {
-      await assert.rejects(listAccounts({ accountsDir }), { code: "EACCES" });
+      await assert.rejects(listAccounts({ configDir, accountsDir }), /index could not be read/);
     } finally {
-      fsPromises.readdir = original;
+      fsPromises.open = original;
     }
   });
   it("resolves default accountsDir from XDG_STATE_HOME or homedir", () => {
+    assert.equal(getDefaultConfigDir({ XDG_CONFIG_HOME: "/config" }, "/home/tester"), path.join("/config", "magpie"));
+    assert.equal(getDefaultConfigDir({}, "/home/tester"), path.join("/home/tester", ".config", "magpie"));
     const withXdg = getDefaultAccountsDir({ XDG_STATE_HOME: "/custom/state" }, "/home/tester");
     assert.equal(withXdg, path.join("/custom/state", "magpie-agy-bridge", "accounts"));
 
@@ -71,7 +76,7 @@ describe("lib/accounts.mjs", () => {
     assert.equal(validateRefreshToken(null), "");
   });
 
-  it("discovers, deduplicates, and sorts registered and local accounts with fault tolerance", async () => {
+  it("lists only registered accounts and preserves their email and credential status", async () => {
     const { configDir, accountsDir } = await createFixture();
 
     // Registered valid accounts (including duplicate profile with email only on second entry)
@@ -118,8 +123,6 @@ describe("lib/accounts.mjs", () => {
         { profile: "cccc3333", email: "corrupt@example.com", registered: true, valid: false, hasUpdatedAt: true },
         { profile: "dddd4444", email: "missing@example.com", registered: true, valid: false, hasUpdatedAt: false },
         { profile: "aaaa1111", email: "zeta@example.com", registered: true, valid: true, hasUpdatedAt: true },
-        { profile: "eeee5555", email: "", registered: false, valid: true, hasUpdatedAt: true },
-        { profile: "ffff6666", email: "", registered: false, valid: false, hasUpdatedAt: true },
       ]
     );
 
@@ -130,16 +133,41 @@ describe("lib/accounts.mjs", () => {
     assert.equal(serialized.includes("rt-local"), false);
   });
 
-  it("gracefully ignores malformed plugin-auth.json and still scans accountsDir", async () => {
+  it("reports a malformed registry instead of showing historical directories", async () => {
     const { configDir, accountsDir } = await createFixture();
     await writeFile(path.join(configDir, "plugin-auth.json"), "not valid json", "utf8");
     await writeTokenFile(accountsDir, "abcd1234", { token: { refresh_token: "rt-ok" } });
 
+    await assert.rejects(listAccounts({ configDir, accountsDir }), /index could not be read/);
+  });
+
+  it("links legacy email sign-ins to AGY's kept home and excludes historical RTs", async () => {
+    const { configDir, accountsDir } = await createFixture();
+    const email = "owner@example.invalid";
+    const profile = "own" + createHash("sha256").update(email).digest("hex").slice(0, 24);
+    await writeTokenFile(accountsDir, profile, { token: { refresh_token: "fixture-current" }, id_token_email: email });
+    for (const ghost of ["old00001", "old00002", "old00003", "old00004"]) {
+      await writeTokenFile(accountsDir, ghost, { token: { refresh_token: "fixture-ghost" } });
+    }
+    await writeFile(path.join(configDir, "plugin-auth.json"), JSON.stringify({
+      "agy-cli": { type: "api", key: "agy", metadata: { email: " Owner@Example.Invalid " } },
+    }));
     const result = await listAccounts({ configDir, accountsDir });
     assert.equal(result.accounts.length, 1);
-    assert.equal(result.accounts[0].profile, "abcd1234");
-    assert.equal(result.accounts[0].registered, false);
+    assert.equal(result.accounts[0].email, "Owner@Example.Invalid");
+    assert.equal(result.accounts[0].profile, profile);
     assert.equal(result.accounts[0].valid, true);
+    await writeTokenFile(accountsDir, profile, { token: { refresh_token: "fixture-mismatch" }, id_token_email: "other@example.invalid" });
+    assert.equal((await listAccounts({ configDir, accountsDir })).accounts[0].valid, false);
+    await writeFile(path.join(configDir, "plugin-auth.json"), '{}');
+    assert.equal((await listAccounts({ configDir, accountsDir })).accounts.length, 0);
+  });
+
+  it("uses credential email only when the registered account lacks an email", async () => {
+    const { configDir, accountsDir } = await createFixture();
+    await writeTokenFile(accountsDir, "email001", { token: { refresh_token: "fixture" }, id_token_email: "file@example.invalid" });
+    await writeFile(path.join(configDir, "plugin-auth.json"), JSON.stringify({ "agy-cli": { metadata: { agyHome: "email001" } } }));
+    assert.equal((await listAccounts({ configDir, accountsDir })).accounts[0].email, "file@example.invalid");
   });
 
   it("reads valid refresh token and rejects invalid profiles, missing files, and oversized/corrupt files", async () => {
@@ -202,16 +230,19 @@ describe("lib/accounts.mjs", () => {
   });
 
   it("rejects the accounts root itself when it is a junction or symlink", async () => {
-    const { root, accountsDir } = await createFixture();
+    const { root, configDir, accountsDir } = await createFixture();
     await writeTokenFile(accountsDir, "rootlink1", { token: { refresh_token: "fixture" } });
+    await writeFile(path.join(configDir, "plugin-auth.json"), JSON.stringify({
+      "agy-cli": { metadata: { agyHome: "rootlink1" } },
+    }));
     const linked = path.join(root, "linked-accounts");
     await symlink(accountsDir, linked, process.platform === "win32" ? "junction" : "dir");
-    assert.deepEqual((await listAccounts({ accountsDir: linked })).accounts, []);
+    assert.equal((await listAccounts({ configDir, accountsDir: linked })).accounts[0].valid, false);
     assert.deepEqual(await readAccountRefreshToken(linked, "rootlink1"), { ok: false, error: "not_found" });
   });
 
   it("rejects symlink / junction paths in accountsDir", async () => {
-    const { root, accountsDir } = await createFixture();
+    const { root, configDir, accountsDir } = await createFixture();
     const externalProfileDir = path.join(root, "external-target");
     await mkdir(path.join(externalProfileDir, ".gemini", "antigravity-cli"), { recursive: true });
     const externalTokenFile = path.join(
@@ -230,12 +261,15 @@ describe("lib/accounts.mjs", () => {
     const linkType = process.platform === "win32" ? "junction" : "dir";
     const linkedProfileDir = path.join(accountsDir, "linkdir1");
     await symlink(externalProfileDir, linkedProfileDir, linkType);
+    await writeFile(path.join(configDir, "plugin-auth.json"), JSON.stringify({
+      "agy-cli": { metadata: { agyHome: "linkdir1" } },
+    }));
 
     const dirRes = await readAccountRefreshToken(accountsDir, "linkdir1");
     assert.deepEqual(dirRes, { ok: false, error: "not_found" });
 
-    const listRes = await listAccounts({ accountsDir });
-    assert.equal(listRes.accounts.some((a) => a.profile === "linkdir1"), false);
+    const listRes = await listAccounts({ configDir, accountsDir });
+    assert.equal(listRes.accounts.find((account) => account.profile === "linkdir1").valid, false);
 
     // Also test file-level symlink when permitted by OS
     const normalDir = path.join(accountsDir, "linkfile1", ".gemini", "antigravity-cli");
